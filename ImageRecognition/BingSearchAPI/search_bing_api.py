@@ -11,12 +11,12 @@ ap.add_argument("-o", "--output", required=True, help="Path to output directory 
 args = vars(ap.parse_args())
 
 # Next set API key with maximum number of results for each search as well as group size for request/results
-API_KEY = "INSERT API KEY HERE"  # API key is missing for obvious reasons
+API_KEY = "ENTER_API_HERE"  # API key is missing for obvious reasons
 MAX_RESULTS = 250
 GROUP_SIZE = 50
 
 # Endpoint API URL
-URL = "https://api.bing.microsoft.com/"
+URL = "https://api.bing.microsoft.com/v7.0/images/search"
 
 # While downloading the images from the web some exceptions can be raised either
 # by Python or by the requests library, here is a list of them
@@ -27,7 +27,7 @@ EXCEPTIONS = set([IOError, FileNotFoundError, exceptions.RequestException,
 # Store the search term in a var, then set the params and header
 term = args["query"]
 headers = {"Ocp-Apim-Subscription-Key": API_KEY}
-params = {"q": term, "offset": 0, "count": GROUP_SIZE}
+params = {"q": term, "license": "any", "safeSearch": "off", "imageType": "photo", "count": GROUP_SIZE, "offset": 0}
 
 # This code is the search
 print(f"[INFO] Searching the Bing API for {term}.")
@@ -51,17 +51,16 @@ for offset in range(0, estimated_number_of_results, GROUP_SIZE):
     search.raise_for_status()
     results = search.json()
     print(f"[INFO] saving images for group {offset} - {offset + GROUP_SIZE} of {estimated_number_of_results}")
-
     for i in results["value"]:
         # Try to download the image
         try:
             # Make a request to download the image
-            print(f"[INFO] Fetching {i['contentURL']}")
-            r = requests.get(i["contentURL"], timeout=30)
+            print(f"[INFO] Fetching {i['contentUrl']}")
+            r = requests.get(i["contentUrl"], timeout=30)
 
             # Build the path to the output image
-            extension = i["contentURL"][i["contentURL"].rfind("."):]
-            path = os.path.sep.join([args["output"], f"{str(total_downloaded).zfill(8)}{extension}"])
+            extension = i["contentUrl"][i["contentUrl"].rfind("."):]
+            path = os.path.altsep.join([args["output"], f"{str(total_downloaded).zfill(8)}{extension}"])
 
             # Write the image to disk
             f = open(path, "wb")
@@ -72,7 +71,7 @@ for offset in range(0, estimated_number_of_results, GROUP_SIZE):
         except Exception as e:
             # Check if the exceptions is in the earlier stated list
             if type(e) in EXCEPTIONS:
-                print(f"[INFO] Skipping {i['contentURL']}")
+                print(f"[INFO] Skipping {i['contentUrl']}")
                 continue
 
         # Try to load the image from disk
@@ -86,3 +85,5 @@ for offset in range(0, estimated_number_of_results, GROUP_SIZE):
 
         # Update the counter
         total_downloaded += 1
+
+print("[INFO] Image scraping done, exiting script.")
