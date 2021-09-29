@@ -31,7 +31,7 @@ for (i, image_path) in enumerate(image_paths):
     rgb_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
 
     # Next detect coordinates of bounding boxes and use them to compute facial embeddings
-    bounding_boxes = face_recognition.face_locations(rgb_image, model=args["detection-method"])
+    bounding_boxes = face_recognition.face_locations(rgb_image, model=args["detection_method"])
     encodings = face_recognition.face_encodings(rgb_image, bounding_boxes)
 
     # Loop through the encoding and add it to earlier initialized lists

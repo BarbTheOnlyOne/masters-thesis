@@ -12,7 +12,8 @@ args = vars(ap.parse_args())
 
 # Load all known faces with names and input images as well
 print("[INFO] Loading encodings.")
-data = pickle.loads(open(args["encodings"]), "rb").read()
+file_loader = open(args["encodings"], "rb")
+data = pickle.loads(file_loader)
 cv_image = cv2.imread(args["image"])
 rgb_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
 
@@ -40,7 +41,7 @@ for encoding in encodings:
 
         # Loop through the indexes and hold count for each recognized face
         for i in matched_ids:
-            name = data["name"][i]
+            name = data["names"][i]
             counts[name] = counts.get(name, 0) + 1
 
         # Determine the recognized face based on the largest number of votes,
