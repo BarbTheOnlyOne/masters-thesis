@@ -109,6 +109,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+venv-3.8
 
 # Spyder project settings
 .spyderproject
@@ -130,3 +131,11 @@ dmypy.json
 
 # Pycharm files
 .idea/
+<<<<<<< Updated upstream
+=======
+
+# My files
+dataset
+haar
+docker
+>>>>>>> Stashed changes
