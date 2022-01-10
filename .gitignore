@@ -131,11 +131,7 @@ dmypy.json
 
 # Pycharm files
 .idea/
-<<<<<<< Updated upstream
-=======
 
 # My files
 dataset
 haar
-docker
->>>>>>> Stashed changes
