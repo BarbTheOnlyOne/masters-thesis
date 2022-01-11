@@ -1,4 +1,5 @@
 # All the necessary imports of packages
+from os import write
 from imutils.video import VideoStream
 from imutils.video import FPS
 import face_recognition
@@ -14,6 +15,8 @@ from numpy import cdouble
 ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--cascade", required=True, help="Path to the face cascades file.")
 ap.add_argument("-e", "--encodings", required=True, help="Path to the serialized database of facial encodings.")
+ap.add_argument("-s", "--display", type=int, required=True, help="If the captured image should be shown on the screen (0 = False, 1 = True).")
+ap.add_argument("-o", "--output", type=str, required=True, help="Name of the output file or the path where to save it.")
 args = vars(ap.parse_args())
 
 # Load known faces with OpenCV's Haar cascade
@@ -30,25 +33,41 @@ time.sleep(2.0)
 # Start the FPS counter
 fps = FPS().start()
 
-# Counter for which image to detect
+#Initialize the HOG detector for persons
+hog = cv2.HOGDescriptor()
+hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+# Set up the video writer
+fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+writer = cv2.VideoWriter(args["output"], 
+                            fourcc, 20, 
+                            (680, 480), 
+                            True)
+
+# Counter for which image to detect, also flag for writer
 image_counter = 0
+video_time_start = 0
 
 # Loop the frames from the video stream
 while True:
-
     # Grab the frame from the threaded video stream, resize it to 500px (faster processing)
     frame = vs.read()
     frame = imutils.resize(frame, width=500)
     image_counter += 1
 
+    # Convert the input frame from BGR to RGB(for face recognition) and to grayscale (for face detection)
+    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # Detect any person in the frame
+    present_persons = hog.detectMultiScale(grayscale, winStride=(8,8) )
+    # If person was detected, start recording / or reset timer
+    if present_persons:
+        video_time_start = time.time()   
+
     # If the counter reached set amount, detect face
-    if (image_counter == 5):
+    if (image_counter == 3):
         # Don't forget to reset the counter, dummy
         image_counter = 0
-
-        # Convert the input frame from BGR to RGB(for face recognition) and to grayscale (for face detection)
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # Detect faces in the greyscale frame
         rectangles = detector.detectMultiScale(grayscale, 
@@ -84,8 +103,6 @@ while True:
                 name = max(counts, key=counts.get)
 
             names.append(name)
-            
-
 
         # Loop through the recognized faces
         for ((top, right, bottom, left), name) in zip(boxes, names):
@@ -103,14 +120,20 @@ while True:
                         0.75, 
                         (0, 255, 0), 
                         2)
+    
+    # This makes sure, that the recording runs for 10 seconds at least
+    if video_time_start != 0 and (time.time() - video_time_start) < 10:
+        writer.write(frame) 
 
-    # Display the image to screen
-    cv2.imshow("Frame", frame)
-    key = cv2.waitKey(1) & 0xFF
+    # Show the image based on the arguments
+    if args["display"] > 0:
+        # Display the image to screen
+        cv2.imshow("Frame", frame)
+        key = cv2.waitKey(1) & 0xFF
 
-    # If 'q' was pressed, break
-    if key == ord("q"):
-        break
+        # If 'q' was pressed, break
+        if key == ord("q"):
+            break
 
     # Update the FPS counter
     fps.update()
@@ -123,3 +146,6 @@ print("[INFO] Approximate FPS: {:.2f}".format(fps.fps()))
 # Cleanup
 cv2.destroyAllWindows()
 vs.stop()
+
+if writer is not None:
+    writer.release()
