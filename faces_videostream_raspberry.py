@@ -9,6 +9,7 @@ import pickle
 import time
 import cv2
 from numpy import cdouble
+import send_email
 
 
 # Construct the argument parses and parse the arguments
@@ -16,7 +17,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--cascade", required=True, help="Path to the face cascades file.")
 ap.add_argument("-e", "--encodings", required=True, help="Path to the serialized database of facial encodings.")
 ap.add_argument("-s", "--display", type=int, required=True, help="If the captured image should be shown on the screen (0 = False, 1 = True).")
-ap.add_argument("-o", "--output", type=str, required=True, help="Name of the output file or the path where to save it.")
+ap.add_argument("-o", "--output", type=str, required=True, help="Name of the output file only!")
 args = vars(ap.parse_args())
 
 # Load known faces with OpenCV's Haar cascade
@@ -36,16 +37,16 @@ fps = FPS().start()
 #Initialize the HOG detector for persons
 hog = cv2.HOGDescriptor()
 hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
-# Set up the video writer
+# Set up for the video writer
 fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-writer = cv2.VideoWriter(args["output"], 
-                            fourcc, 20, 
-                            (680, 480), 
-                            True)
 
-# Counter for which image to detect, also flag for writer
+# Counter for which image to detect, snippet numbers and also flag for writer
 image_counter = 0
 video_time_start = 0
+snipper_number = 0
+# Email realted things
+receiver = "YOUR_MAIL@gmail.com"
+body = "Alert! The secured spaces has been compromised!"
 
 # Loop the frames from the video stream
 while True:
@@ -62,7 +63,12 @@ while True:
     present_persons = hog.detectMultiScale(grayscale, winStride=(8,8) )
     # If person was detected, start recording / or reset timer
     if present_persons:
-        video_time_start = time.time()   
+        video_time_start = time.time()
+        full_snippet_name = args["output"] + f"_{snipper_number}" + ".avi"
+        writer = cv2.VideoWriter(full_snippet_name, 
+                            fourcc, 20, 
+                            (680, 480), 
+                            True)  
 
     # If the counter reached set amount, detect face
     if (image_counter == 3):
@@ -124,6 +130,9 @@ while True:
     # This makes sure, that the recording runs for 10 seconds at least
     if video_time_start != 0 and (time.time() - video_time_start) < 10:
         writer.write(frame) 
+    else:
+        send_email.send_mail(receiver, body, full_snippet_name)
+        writer.release()
 
     # Show the image based on the arguments
     if args["display"] > 0:
