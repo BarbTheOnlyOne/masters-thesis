@@ -79,12 +79,12 @@ while True:
     boxes = [(y, x + w, y + h, x) for (x, y, w, h) in rectangles]
 
     if image_counter == 0:
+        names.clear()
         # Next make the embeddings for each face bounding box
         encodings = face_recognition.face_encodings(rgb, boxes)
 
         # Loop through the encodings
         for encoding in encodings:
-            names = []
             # Attempt to match faces in the input with known ones
             matches = face_recognition.compare_faces(data["encodings"], encoding)
 
@@ -101,6 +101,8 @@ while True:
 
                 # Determine the recognized face with the largest number of votes
                 name = max(counts, key=counts.get)
+            else:
+                name = "Unknown"
 
             names.append(name)
 
@@ -120,10 +122,10 @@ while True:
         y = top - 15 if top - 15 > 15 else top + 15
         cv2.putText(frame, 
                     name, 
-                    (left, y), 
+                    (left, y),
                     cv2.FONT_HERSHEY_SIMPLEX, 
-                    0.75, 
-                    (0, 255, 0), 
+                    0.75,
+                    (0, 255, 0),
                     2)
     
     # This makes sure, that the recording runs for 10 seconds at least
