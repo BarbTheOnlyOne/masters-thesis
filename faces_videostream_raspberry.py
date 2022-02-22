@@ -43,10 +43,18 @@ snippet_number = 0
 # Email realted variables
 receiver = "YOUR_MAIL@gmail.com"
 body = "Alert! The secured spaces has been compromised!"
+# Flags for alerts and other
+test_started = False
+person_detected = False
+face_recognized = False
+start_counter = False
 
 # Initilize array for found names, as well as default name
 names = []
 name = "Unknown"
+
+if not test_started:
+    print(f"[INFO] Test has been strated at time: {time.time()}")
 
 # Loop the frames from the video stream
 while True:
@@ -68,12 +76,16 @@ while True:
                             fourcc, 20, 
                             (680, 480), 
                             True)  
+        if not person_detected:
+            print(f"[INFO] Person has been detected at time: {time.time()}")
 
     # Detect faces in the greyscale frame
     rectangles = detector.detectMultiScale(grayscale, 
                                         scaleFactor=1.1, 
                                         minNeighbors=5, 
                                         minSize=(30, 30))
+    if rectangles:
+        start_counter = True
 
     # OpenCV returns boxes in format of (x, y, w, h), but (top, right, bottom, left) is needed
     boxes = [(y, x + w, y + h, x) for (x, y, w, h) in rectangles]
@@ -101,13 +113,18 @@ while True:
 
                 # Determine the recognized face with the largest number of votes
                 name = max(counts, key=counts.get)
+
+                if not face_recognized:
+                    print(f"[INFO] Face successfully recognized at time: {time.time()}")
             else:
+                print(f"[INFO] Face not recognized, set to unknown at time: {time.time()}")
                 name = "Unknown"
 
             names.append(name)
 
     # Counter for face encodings check
-    image_counter += 1
+    if start_counter:
+        image_counter += 1
     if image_counter == 10:
         image_counter = 0
 
@@ -135,6 +152,7 @@ while True:
         send_email.send_mail(receiver, body, full_snippet_name)
         writer.release()
         snippet_number += 1
+        print(f"[INFO] Email has been sent, snippet saved as {full_snippet_name}")
 
     # Show the image based on the arguments
     if args["display"] > 0:
