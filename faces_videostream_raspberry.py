@@ -1,5 +1,4 @@
 # All the necessary imports of packages
-from os import write
 from imutils.video import VideoStream
 from imutils.video import FPS
 import face_recognition
@@ -7,8 +6,8 @@ import argparse
 import imutils
 import pickle
 import time
+from datetime import datetime
 import cv2
-from numpy import cdouble
 import send_email
 
 
@@ -54,7 +53,7 @@ names = []
 name = "Unknown"
 
 if not test_started:
-    print(f"[INFO] Test has been strated at time: {time.time()}")
+    print(f"[INFO] Test has been started at time: {datetime.now().time()}")
 
 # Loop the frames from the video stream
 while True:
@@ -77,7 +76,7 @@ while True:
                             (680, 480), 
                             True)  
         if not person_detected:
-            print(f"[INFO] Person has been detected at time: {time.time()}")
+            print(f"[INFO] Person has been detected at time: {datetime.now().time()}")
 
     # Detect faces in the greyscale frame
     rectangles = detector.detectMultiScale(grayscale, 
@@ -115,9 +114,9 @@ while True:
                 name = max(counts, key=counts.get)
 
                 if not face_recognized:
-                    print(f"[INFO] Face successfully recognized at time: {time.time()}")
+                    print(f"[INFO] Face successfully recognized at time: {datetime.now().time()}")
             else:
-                print(f"[INFO] Face not recognized, set to unknown at time: {time.time()}")
+                print(f"[INFO] Face not recognized, set to unknown at time: {datetime.now().time()}")
                 name = "Unknown"
 
             names.append(name)
