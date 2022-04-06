@@ -11,7 +11,7 @@ def send_mail(receiver, body, filename):
     ---
     """
 
-    yag = yagmail.SMTP("michal.barborik96", "bdzlxafxdijcdbhz")
+    yag = yagmail.SMTP("email", "random_pass")
     yag.send(
         to=receiver,
         subject="INTRUDER ALERT",
