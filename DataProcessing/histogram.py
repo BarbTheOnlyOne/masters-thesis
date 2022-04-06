@@ -13,7 +13,6 @@ distance_column = df["vzdálenost rozpoznání obličeje"]
 column_mean = distance_column.mean()
 standard_deviation = distance_column.std()
 
-# Sturges rule: k = [1 + 3,32 × log(n)]
 bin_number = round(1 + 3.32 * math.log10(120))
 min_number = distance_column.min()
 max_number = distance_column.max()
@@ -50,5 +49,5 @@ plt.axvline(x=column_mean + 3*standard_deviation, color="red", ymax=0.5)
 plt.text(column_mean + 3*standard_deviation - 0.1, 85*0.5,'+3σ', color="red", fontsize="large")
 plt.legend(loc="upper left", fontsize="large")
 plt.tight_layout()
-plt.savefig("histogram_night_20Y.png", dpi=300)
+plt.savefig("histogram_name.png", dpi=300)
 plt.show()
