@@ -5,7 +5,7 @@ import seaborn as sns
 import math
 
 
-filepath = "D:/FBI/Moje/Státnice - ing/Diplomka/results/night/all_full_data_night_20Y.csv"
+filepath = "RANDOM_FILE_PATH"
 
 df = pd.read_csv(filepath)
 distance_column = df["vzdálenost rozpoznání obličeje"]
