@@ -6,29 +6,54 @@ import argparse
 import imutils
 import pickle
 import time
+from datetime import datetime
 import cv2
-from numpy import cdouble
+import send_email
 
 
 # Construct the argument parses and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--cascade", required=True, help="Path to the face cascades file.")
 ap.add_argument("-e", "--encodings", required=True, help="Path to the serialized database of facial encodings.")
+ap.add_argument("-s", "--display", type=int, required=True, help="If the captured image should be shown on the screen (0 = False, 1 = True).")
+ap.add_argument("-o", "--output", type=str, required=True, help="Name of the output file only!")
 args = vars(ap.parse_args())
 
-# Load known faces with OpenCV's Haar cascade
-print("[INFO] Loading encodings and Haar face detector...")
+# Intilize and load detectors, known faces etc.
+print("[INFO] Loading encodings and detectors...")
 data = pickle.loads(open(args["encodings"], "rb").read())
-detector = cv2.CascadeClassifier(args["cascade"])
+detector = cv2.CascadeClassifier(args["cascade"]) # Face detector
+hog = cv2.HOGDescriptor() # Persons detector
+hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+fourcc = cv2.VideoWriter_fourcc(*"MJPG") # video writer
 
 # Intialize the video stream, sleep to let the camera sensor to warm up
-print("[INFO] Strating the video stream...")
+print("[INFO] Starting the video stream...")
 # vs = VideoStream(src=0).start() # This line is for USB cam
 vs = VideoStream(usePiCamera=True).start() # This line is for Raspi cam
 time.sleep(2.0)
-
 # Start the FPS counter
 fps = FPS().start()
+
+# Counter for which image to detect, snippet numbers and also flag for writer
+image_counter = 0
+video_time_start = 0
+snippet_number = 0
+# Email realted variables
+receiver = "YOUR_MAIL@gmail.com"
+body = "Alert! The secured spaces has been compromised!"
+# Flags for alerts and other
+test_started = False
+person_detected = False
+face_recognized = False
+start_counter = False
+
+# Initilize array for found names, as well as default name
+names = []
+name = "Unknown"
+
+if not test_started:
+    print(f"[INFO] Test has been started at time: {datetime.now().time()}")
 
 # Loop the frames from the video stream
 while True:
@@ -40,65 +65,103 @@ while True:
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
+    # Detect any person in the frame
+    present_persons = hog.detectMultiScale(grayscale, winStride=(8,8) )
+    # If person was detected, start recording / or reset timer
+    if present_persons:
+        video_time_start = time.time()
+        full_snippet_name = args["output"] + f"_{snippet_number}" + ".avi"
+        writer = cv2.VideoWriter(full_snippet_name, 
+                            fourcc, 20, 
+                            (680, 480), 
+                            True)  
+        if not person_detected:
+            print(f"[INFO] Person has been detected at time: {datetime.now().time()}")
+
     # Detect faces in the greyscale frame
     rectangles = detector.detectMultiScale(grayscale, 
-                                           scaleFactor=1.1, 
-                                           minNeighbors=5, 
-                                           minSize=(30, 30))
+                                        scaleFactor=1.1, 
+                                        minNeighbors=5, 
+                                        minSize=(30, 30))
+    if rectangles:
+        start_counter = True
 
     # OpenCV returns boxes in format of (x, y, w, h), but (top, right, bottom, left) is needed
     boxes = [(y, x + w, y + h, x) for (x, y, w, h) in rectangles]
 
-    # Next make the embeddings for each face bounding box
-    encodings = face_recognition.face_encodings(rgb, boxes)
-    names = []
+    if image_counter == 0:
+        names.clear()
+        # Next make the embeddings for each face bounding box
+        encodings = face_recognition.face_encodings(rgb, boxes)
 
-    # Loop through the encodings
-    for encoding in encodings:
-        # Attempt to match faces in the input with known ones
-        matches = face_recognition.compare_faces(data["encodings"], encoding)
-        name = "Unknown"
+        # Loop through the encodings
+        for encoding in encodings:
+            # Attempt to match faces in the input with known ones
+            matches = face_recognition.compare_faces(data["encodings"], encoding)
 
-        # Check to see if match was found
-        if True in matches:
-            # Find indexes of all matched faces, initialize dictionary to count the number of votes for each face
-            matchedIdxs = [i for (i, b) in enumerate(matches) if b]
-            counts = {}
+            # Check to see if match was found
+            if True in matches:
+                # Find indexes of all matched faces, initialize dictionary to count the number of votes for each face
+                matchedIdxs = [i for (i, b) in enumerate(matches) if b]
+                counts = {}
 
-            # Loop over the matched indexes and mantain a count for each recognized face 
-            for i in matchedIdxs:
-                name = data["names"][i]
-                counts[name] = counts.get(name, 0) + 1
+                # Loop over the matched indexes and mantain a count for each recognized face 
+                for i in matchedIdxs:
+                    name = data["names"][i]
+                    counts[name] = counts.get(name, 0) + 1
 
-            # Determine the recogniýzed face with the largest number of votes
-            name = max(counts, key=counts.get)
+                # Determine the recognized face with the largest number of votes
+                name = max(counts, key=counts.get)
 
-        names.append(name)
+                if not face_recognized:
+                    print(f"[INFO] Face successfully recognized at time: {datetime.now().time()}")
+            else:
+                print(f"[INFO] Face not recognized, set to unknown at time: {datetime.now().time()}")
+                name = "Unknown"
+
+            names.append(name)
+
+    # Counter for face encodings check
+    if start_counter:
+        image_counter += 1
+    if image_counter == 10:
+        image_counter = 0
 
     # Loop through the recognized faces
     for ((top, right, bottom, left), name) in zip(boxes, names):
         # Draw the predicted face name on the image
         cv2.rectangle(frame, 
-                      (left, top), 
-                      (right, bottom), 
-                      (0, 255, 0), 
-                      2)
+                    (left, top), 
+                    (right, bottom), 
+                    (0, 255, 0), 
+                    2)
         y = top - 15 if top - 15 > 15 else top + 15
         cv2.putText(frame, 
                     name, 
-                    (left, y), 
+                    (left, y),
                     cv2.FONT_HERSHEY_SIMPLEX, 
-                    0.75, 
-                    (0, 255, 0), 
+                    0.75,
+                    (0, 255, 0),
                     2)
     
-    # Display the image to screen
-    cv2.imshow("Frame", frame)
-    key = cv2.waitKey(1) & 0xFF
+    # This makes sure, that the recording runs for 10 seconds at least
+    if video_time_start != 0 and (time.time() - video_time_start) < 10:
+        writer.write(frame) 
+    else:
+        send_email.send_mail(receiver, body, full_snippet_name)
+        writer.release()
+        snippet_number += 1
+        print(f"[INFO] Email has been sent, snippet saved as {full_snippet_name}")
 
-    # If 'q' was pressed, break
-    if key == ord("q"):
-        break
+    # Show the image based on the arguments
+    if args["display"] > 0:
+        # Display the image to screen
+        cv2.imshow("Frame", frame)
+        key = cv2.waitKey(1) & 0xFF
+
+        # If 'q' was pressed, break
+        if key == ord("q"):
+            break
 
     # Update the FPS counter
     fps.update()
@@ -111,3 +174,6 @@ print("[INFO] Approximate FPS: {:.2f}".format(fps.fps()))
 # Cleanup
 cv2.destroyAllWindows()
 vs.stop()
+
+if writer is not None:
+    writer.release()
